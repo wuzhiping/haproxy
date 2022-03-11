@@ -16,6 +16,23 @@ services:
     volumes:
       - ./haproxy_conf:/usr/local/etc/haproxy
 
+  mycat:
+    build: ./mycat
+    image: shawoo/mycat
+    restart: always
+    volumes:
+      - ./mycat/conf/server.xml:/home/mycat/conf/server.xml
+      - ./mycat/conf/schema.xml:/home/mycat/conf/schema.xml
+      - ./mycat/conf/rule.xml:/home/mycat/conf/rule.xml
+    ports:
+      - "8066:8066"
+    links:
+      - mysqlmaster
+      - mysqlslave
+    networks:
+      mysqlrw:
+        ipv4_address: 192.10.0.3
+
   mysqlmaster:
     image: shawoo/mysql:5.7.15
     restart: always
