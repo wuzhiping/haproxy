@@ -1,0 +1,77 @@
+version: '2'
+services:
+  haproxy:
+    image: haproxy:alpine
+    container_name: haproxy
+    restart: always
+    networks:
+      mysqlrw:
+        ipv4_address: 192.10.0.2
+    links:
+      - mysqlmaster
+      - mysqlslave
+    ports:
+      - "13306:3306"
+      - "88:80"
+    volumes:
+      - ./haproxy_conf:/usr/local/etc/haproxy
+
+  mysqlmaster:
+    image: shawoo/mysql:5.7.15
+    restart: always
+    hostname: mysqlmaster
+    networks:
+      mysqlrw:
+        ipv4_address: 192.10.0.10
+    environment:
+      MYSQL_ROOT_PASSWORD: 100861
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
+      - ./data/mysql-master:/var/lib/mysql/
+      - ./config/mysql-master:/etc/mysql/conf.d/
+
+  mysqlslave:
+    image: shawoo/mysql:5.7.15
+    restart: always
+    hostname: mysqlslave
+    networks:
+      mysqlrw:
+        ipv4_address: 192.10.0.11
+    environment:
+      - "MYSQL_ROOT_PASSWORD=100861"
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
+      - ./data/mysql-slave:/var/lib/mysql/
+      - ./config/mysql-slave:/etc/mysql/conf.d/
+
+  mysqlclient:
+    image: shawoo/mysql:5.7.15
+    depends_on:
+      - mysqlmaster
+      - mysqlslave
+    networks:
+      mysqlrw:
+        ipv4_address: 192.10.0.200
+    environment:
+      - "MYSQL_SLAVE_PASSWORD=100861"
+      - "MYSQL_MASTER_PASSWORD=100861"
+      - "MYSQL_ROOT_PASSWORD=100861"
+      - "MYSQL_REPLICATION_USER=repl"
+      - "MYSQL_REPLICATION_PASSWORD=repl"
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
+      - ./mysql_connector.sh:/tmp/mysql_connector.sh
+    command: /bin/bash  -x /tmp/mysql_connector.sh
+    stdin_open: true
+    tty: true
+
+networks:
+   mysqlrw:
+     driver: bridge
+     ipam:
+       driver: default
+       config:
+         - subnet: 192.10.0.0/24
